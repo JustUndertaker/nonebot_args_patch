@@ -24,6 +24,14 @@
 import nonebot_args_patch.patch
 ```
 
+## 安装
+
+使用pip进行安装
+
+```bash
+pip install nonebot_args_patch
+```
+
 ## 构造matcher
 
 需要使用补丁内的`on_command`或者`command_group`才能生效
@@ -67,13 +75,13 @@ command_start = [""]
 
         ```python
         from nonebot_args_patch import on_command,Require
-
+    
         matcher = on_command(cmd="测试",need_space=True,arg=Require())
-
+    
         """
         > 测试 123
           可以触发,arg为123
-
+    
         > 测试123
           不能触发
         """
@@ -85,13 +93,13 @@ command_start = [""]
 
         ```python
         from nonebot_args_patch import on_command,Require
-
+        
         matcher = on_command(cmd="测试",need_help=True,arg=Require())
-
+        
         """
         > a测试
           不能触发，但会返回一句msg提示：
-
+        
           未知命令，你可能想要找：
           测试 arg
         """
@@ -101,7 +109,7 @@ command_start = [""]
 
   ```py
   from nonebot_args_patch import on_command,Require,Default,AtRequire
-
+  
   matcher = on_command(
   	cmd = "测试",
       arg1 = Require(),
@@ -157,29 +165,29 @@ matcher = on_command(cmd="测试",arg=Require(help="参数1"))
     ```python
     from nonebot_args_patch import on_command,Default
     from nonebot.params import Command
-
+  
     matcher = on_command(cmd="测试",arg=Default(default="默认")) # 默认值构造
-
+  
     """
     > 测试
       能触发，arg的值为'默认'
     """
-
+  
     def get_default():
         return "默认"
-
+  
     matcher = on_command(cmd="测试",arg=Default(default=get_default)) # 默认函数
-
+  
     """
     > 测试
       能触发，arg的值为'默认'
     """
-
+  
     def get_defaultarg(cmd:Message=Command()):
         return str(cmd)
-
+  
     matcher = on_command(cmd="测试",arg=Default(default=get_default))	# 默认函数+依赖注入
-
+  
     """
     > 测试
       能触发，arg的值为'测试'
