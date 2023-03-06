@@ -4,7 +4,7 @@ commmand参数模块
 模块需要打补丁
 在bot.py的第一行写入：
 
-import commandarg.patch
+import nonebot_args_patch.patch
 """
 
 from .commandarg import AtRequire as AtRequire

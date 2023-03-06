@@ -1,7 +1,7 @@
 """
 猴子补丁，需要在bot.py的第一行写入：
 
-import commandarg.patch
+import nonebot_args_patch.patch
 """
 import shlex
 from contextlib import AsyncExitStack
