@@ -17,12 +17,17 @@
 
 ## 警告
 
-本模块修改了nb2框架部分代码，所以需要在`bot.py`文件下打补丁补丁：
+本模块修改了nb2框架部分代码，所以需要在`bot.py`文件下打一下补丁：
 
 ```python
 # bot.py下需要加入以下代码
 import nonebot_args_patch.patch
 ```
+
+如果你使用新版`nb-cli`，没有`bot.py`，那么你可以选择：
+
+1. 在bot目录下，使用命令`nb generate`生成`bot.py`
+2. 或者在某个插件下输入以上代码（只需要输入一次即可）
 
 ## 安装
 
