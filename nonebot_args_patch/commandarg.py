@@ -147,9 +147,7 @@ class Args(Generic[T]):
 
         default_gennerate = self.default_manager.get_arg()
         need_get_defult_num = len(self.default_manager) - need_default_num
-        get_default_arg: List[Default] = []
-        for _ in range(need_get_defult_num):
-            get_default_arg.append(next(default_gennerate))
+        get_default_arg = [next(default_gennerate) for _ in range(need_get_defult_num)]
         count = 0
         for name, arg in self.args_list:
             if isinstance(arg, Default):
