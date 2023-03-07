@@ -22,106 +22,18 @@ from nonebot.internal.adapter.message import Message
 from nonebot.internal.matcher import Matcher
 from nonebot.internal.permission import Permission
 from nonebot.internal.rule import Rule
-from nonebot.message import RUN_PREPCS_PARAMS
 from nonebot.params import Depends
 from nonebot.rule import command
 from nonebot.typing import T_Handler, T_PermissionChecker, T_RuleChecker, T_State
 
+from .args import Arg, AtRequire, Default, Require
 from .consts import ARGS, ARGSTYPE
 from .exception import CommandArgException
 from .helper import CommandHelp, CommandHelper, OneArgHelp
+from .provider import DefaultManager
 from .rule import space_command
 
-__all__ = ["Require", "Default", "on_command", "AtRequire", "CommandGroup", "get_args"]
-
-T = TypeVar("T", bound="Arg")
-
-
-class Arg:
-    """参数基类"""
-
-    name: Optional[str]
-    """参数提示名"""
-    optional: bool
-    """是否可选"""
-
-    def __init__(self, name: str, optional: bool) -> None:
-        self.name = name
-        self.optional = optional
-
-
-class Require(Arg):
-    """
-    说明:
-        该参数需要用户提供
-
-    参数:
-        * `help`：帮助指令提示的参数显示名称
-    """
-
-    def __init__(self, help: str = None) -> None:
-        super().__init__(help, False)
-
-
-class AtRequire(Arg):
-    """
-    说明:
-        * 该参数表示需要获取机器人at的目标，获取到的会是`MessageSegment`
-        * 此外，`AtRequire`的顺序不重要，只看数量；但是`AtRequire`之间是有顺序的
-
-    参数:
-        * `help`：帮助指令提示的参数显示名称
-
-    注意:
-        * nb2在消息开头at机器人时会将at去掉
-    """
-
-    def __init__(self, help: str = None) -> None:
-        super().__init__(help, False)
-
-
-class Default(Arg):
-    """
-    说明:
-        该参数在用户不提供时会有默认值
-
-    参数:
-        * `default`：该参数可以是Callable，也可以是任意值，当类型为
-            `Callable`时，可以使用依赖注入，并拥有`bot`，`matcher`，`event`，`state`等注入参数
-        * `help`：帮助指令提示的参数显示名称
-
-    注意:
-        * 在使用`get_args`获取该参数时，类型注解需要保持一致
-
-    例子:
-
-    ```python
-    matcher = on_command("test", value=Default(123))
-
-    @matcher.handle()
-    async def _( value:int = get_args("value") ): # value的类型为 int
-    ```
-    """
-
-    is_callable: bool
-    """是否为callable函数"""
-    func: Dependent[Any]
-    """依赖容器"""
-    value: Any
-    """默认值"""
-
-    def __init__(
-        self, default: Union[Callable[..., Any], Any], help: str = None
-    ) -> None:
-        if callable(default):
-            self.is_callable = True
-            self.func = Dependent[Any].parse(
-                call=default, allow_types=RUN_PREPCS_PARAMS
-            )
-        else:
-            self.is_callable = False
-            self.value = default
-        super().__init__(name=help, optional=True)
+T = TypeVar("T", bound=Arg)
 
 
 class Args(Generic[T]):
@@ -131,6 +43,8 @@ class Args(Generic[T]):
 
     args_list: List[Tuple[str, T]] = []
     """命令元组列表"""
+    default_manager: DefaultManager
+    """默认参数的管理器"""
     num_args: int
     """参数数量"""
     is_matched: bool
@@ -152,6 +66,7 @@ class Args(Generic[T]):
         args_list: List[Tuple[str, T]] = []
         at_name_list: List[str] = []
         command_help_list: List[OneArgHelp] = []
+        default_manager = DefaultManager()
         need_at = False
         for name, arg in kwargs.items():
             if not isinstance(arg, Arg):
@@ -166,6 +81,8 @@ class Args(Generic[T]):
                 at_name_list.append(name)
             else:
                 args_list.append((name, arg))
+                if isinstance(arg, Default):
+                    default_manager[arg.priority].append(arg)
         CommandHelper.add_command(
             names=cmd,
             command=CommandHelp(
@@ -180,6 +97,7 @@ class Args(Generic[T]):
             {
                 "args_list": args_list,
                 "num_args": num_args,
+                "default_manager": default_manager,
                 "is_matched": False,
                 "need_at": need_at,
                 "num_at": num_at,
@@ -221,24 +139,33 @@ class Args(Generic[T]):
             logger.error(msg)
             raise CommandArgException(msg)
 
-        nums = self.num_args - len(args_list)
-        if nums < 0:
+        need_default_num = self.num_args - len(args_list)
+        if need_default_num < 0:
             msg = "命令传入参数过多"
             logger.error(msg)
             raise CommandArgException(msg)
+
+        default_gennerate = self.default_manager.get_arg()
+        need_get_defult_num = len(self.default_manager) - need_default_num
+        get_default_arg: List[Default] = []
+        for _ in range(need_get_defult_num):
+            get_default_arg.append(next(default_gennerate))
         count = 0
         for name, arg in self.args_list:
-            if nums != 0 and isinstance(arg, Default):
-                if arg.is_callable:
-                    self.result[name] = await arg.func(
-                        bot=bot,
-                        event=event,
-                        matcher=matcher,
-                        state=matcher.state,
-                    )
+            if isinstance(arg, Default):
+                if arg in get_default_arg:
+                    self.result[name] = args_list[count]
+                    count += 1
                 else:
-                    self.result[name] = arg.value
-                nums -= 1
+                    if arg.is_callable:
+                        self.result[name] = await arg.func(
+                            bot=bot,
+                            event=event,
+                            matcher=matcher,
+                            state=matcher.state,
+                        )
+                    else:
+                        self.result[name] = arg.value
             else:
                 self.result[name] = args_list[count]
                 count += 1
@@ -411,13 +338,21 @@ class CommandGroup:
         )
 
 
-def get_args(arg_name: str) -> Any:
+def get_args(
+    arg_name: str,
+    result_type: Optional[Union[Type[str], Type[int], Callable[[Any], Any]]] = None,
+) -> Any:
     """
     说明:
         获取命令参数
 
     参数:
         * `arg_name`：要获取的参数名，和on_command设置的一致
+        * `result_type`：返回结果类型，默认为`None`：
+            * `None`：将原样返回获取到的结果
+            * `Type[str]`：尝试转换为`str`类型
+            * `Type[int]`：尝试转换为`int`类型
+            * `Callable`：会将获得的结果调用这个call之后返回
 
     返回:
         * `Any`：你获取到的参数
@@ -437,7 +372,20 @@ def get_args(arg_name: str) -> Any:
         if result is None:
             logger.error(f"未找到{arg_name}的参数")
             matcher.skip()
-
+        if result_type == str:
+            result = str(result)
+        elif result_type == int:
+            try:
+                result = int(result)
+            except ValueError:
+                logger.error(f"在尝试将参数[{arg_name}]: {result} 转换为int时出错")
+                matcher.skip()
+        elif callable(result_type):
+            try:
+                result = result_type(result)
+            except Exception:
+                logger.error(f"在尝试将参数[{arg_name}]运行转换[{result_type.__name__}]时出错")
+                matcher.skip()
         return result
 
     return Depends(_get_args)
