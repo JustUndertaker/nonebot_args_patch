@@ -56,6 +56,7 @@ class Default(Arg):
         * `default`：该参数可以是Callable，也可以是任意值，当类型为
             `Callable`时，可以使用依赖注入，并拥有`bot`，`matcher`，`event`，`state`等注入参数
         * `help`：帮助指令提示的参数显示名称
+        * `priority`: 优先级，在缺少参数时，优先级越高的Default更优先获取参数，参数越小优先级越高，默认为1
 
     注意:
         * 在使用`get_args`获取该参数时，类型注解需要保持一致

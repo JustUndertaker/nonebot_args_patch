@@ -80,13 +80,13 @@ command_start = [""]
 
         ```python
         from nonebot_args_patch import on_command,Require
-    
+        
         matcher = on_command(cmd="测试",need_space=True,arg=Require())
-    
+        
         """
         > 测试 123
           可以触发,arg为123
-    
+        
         > 测试123
           不能触发
         """
@@ -170,34 +170,36 @@ matcher = on_command(cmd="测试",arg=Require(help="参数1"))
     ```python
     from nonebot_args_patch import on_command,Default
     from nonebot.params import Command
-  
+    
     matcher = on_command(cmd="测试",arg=Default(default="默认")) # 默认值构造
-  
+    
     """
     > 测试
       能触发，arg的值为'默认'
     """
-  
+    
     def get_default():
         return "默认"
-  
+    
     matcher = on_command(cmd="测试",arg=Default(default=get_default)) # 默认函数
-  
+    
     """
     > 测试
       能触发，arg的值为'默认'
     """
-  
+    
     def get_defaultarg(cmd:Message=Command()):
         return str(cmd)
-  
+    
     matcher = on_command(cmd="测试",arg=Default(default=get_default))	# 默认函数+依赖注入
-  
+    
     """
     > 测试
       能触发，arg的值为'测试'
     """
     ```
+
+- `priority`: 优先级，在命令缺少参数时，优先级越高的`Default`优先获取参数，数值越小优先级越高，默认为1
 
 - `help`：该参数在命令帮助时显示的内容，默认为`None`
 
@@ -221,7 +223,7 @@ matcher = on_command(cmd="测试",arg=Require(help="参数1"))
 
 参数:
 
-- `name`，str：你需要获取的参数名称，需要注意类型提示
+- `arg_name`，str：你需要获取的参数名称，需要注意类型提示
 
 ```python
 from nonebot_args_patch import on_command,Require,get_args
@@ -239,6 +241,56 @@ arg:str = get_args("arg1")
 < 123
 """
 ```
+
+- `result_type`: 返回结果类型，默认为`None`
+
+  - `None`：将原样返回获取到的结果
+  - `Type[str]`：尝试转换为`str`类型
+  - `Type[int]`：尝试转换为`int`类型
+  - `Callable`：会将获得的结果调用这个call之后返回
+
+  ```python
+  from nonebot_args_patch import on_command,Require,get_args
+  
+  matcher = on_command(cmd="测试",arg1=Require())
+  
+  @matcher.handle()
+  async def _(
+  arg:str = get_args("arg1",resule_type=str)
+  ):
+      await matcher.finish(arg)
+  
+  """
+  > 测试 123
+  < 123  (字符串)
+  """
+  
+  @matcher.handle()
+  async def _(
+  arg:int = get_args("arg1",resule_type=int)
+  ):
+      await matcher.finish(arg)
+  
+  """
+  > 测试 123
+  < 123  (整数)
+  """
+  def call(value:str)->int:
+      return int(value)+1
+  
+  @matcher.handle()
+  async def _(
+  arg:int = get_args("arg1",resule_type=call)
+  ):
+      await matcher.finish(arg)
+      
+  """
+  > 测试 123
+  < 124  (整数)
+  """
+  ```
+
+  
 
 **注意**
 
