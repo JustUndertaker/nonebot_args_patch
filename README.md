@@ -16,6 +16,8 @@
 - 所有参数都支持`help`信息，在参数检测错误时会返回指令帮助
 - 在未检测到命令时，支持相似命令修正（这个需要占用一个`matcher`）
 
+如果你的机器人命令很多，参数很杂，形如：`命令 参数1 参数2 参数3 ...` ；同时参数还可能是可选的，而可选参数还能有默认值的情况，使用此模块可以很方便进行命令管理。
+
 ## 警告
 
 本模块修改了nb2框架部分代码，所以需要在`bot.py`文件下打一下补丁：
@@ -81,13 +83,13 @@ command_start = [""]
 
         ```python
         from nonebot_args_patch import on_command,Require
-        
+    
         matcher = on_command(cmd="测试",need_space=True,arg=Require())
-        
+    
         """
         > 测试 123
           可以触发,arg为123
-        
+    
         > 测试123
           不能触发
         """
@@ -171,29 +173,29 @@ matcher = on_command(cmd="测试",arg=Require(help="参数1"))
     ```python
     from nonebot_args_patch import on_command,Default
     from nonebot.params import Command
-    
+  
     matcher = on_command(cmd="测试",arg=Default(default="默认")) # 默认值构造
-    
+  
     """
     > 测试
       能触发，arg的值为'默认'
     """
-    
+  
     def get_default():
         return "默认"
-    
+  
     matcher = on_command(cmd="测试",arg=Default(default=get_default)) # 默认函数
-    
+  
     """
     > 测试
       能触发，arg的值为'默认'
     """
-    
+  
     def get_defaultarg(cmd:Message=Command()):
         return str(cmd)
-    
+  
     matcher = on_command(cmd="测试",arg=Default(default=get_default))	# 默认函数+依赖注入
-    
+  
     """
     > 测试
       能触发，arg的值为'测试'
@@ -284,14 +286,14 @@ arg:str = get_args("arg1")
   arg:int = get_args("arg1",resule_type=call)
   ):
       await matcher.finish(arg)
-      
+  
   """
   > 测试 123
   < 124  (整数)
   """
   ```
 
-  
+
 
 **注意**
 
